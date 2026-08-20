@@ -14,7 +14,7 @@ local savedPosition = nil
 local savedTargetPosition = nil
 local savedTransparency = nil
 local ScriptVersion = "1.0.0"
-local KeyURL = "https://www.youtube.com/watch?v=ВАША_ССЫЛКА" -- СЮДА ВСТАВЬ ССЫЛКУ
+local KeyURL = "https://youtu.be/9Lv6lhK5n6E" -- СЮДА ВСТАВЬ ССЫЛКУ
 
 local TweenService = game:GetService("TweenService")
 
