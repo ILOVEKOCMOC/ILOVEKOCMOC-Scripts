@@ -1,23 +1,59 @@
 --[[
     +1 JUMP MACE ESCAPE
     YT:@ILOVEKOCMOC
-    Version: 1.0.1(Beta)
+    Version: 1.1.1(Beta)
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
 -- ====== ПЕРЕМЕННЫЕ ======
 local correctKey = "1337"
+local creatorKey = "ILOVEKOCMOC_DEV"
 local language = "RU"
-local languageSelected = false -- Язык не выбран
+local languageSelected = false
 local keyAccepted = false
 local savedPosition = nil
 local savedTargetPosition = nil
 local savedTransparency = nil
-local ScriptVersion = "1.0.1(Beta)"
+local ScriptVersion = "1.1.1(Beta)"
 local KeyURL = "https://youtu.be/9Lv6lhK5n6E"
 
+-- ====== GITHUB GIST СИНХРОНИЗАЦИЯ ======
+-- Создай Gist на https://gist.github.com
+-- Содержимое: {"count":0}
+local GistID = "e1982de6efc371e9265f5b12bc8c0631" -- Вставь сюда ID твоего Gist
+
+local function getGlobalScriptUsers()
+    local total = 0
+    pcall(function()
+        local response = game:HttpGet("https://api.github.com/ILOVEKOCMOC/" .. GistID)
+        local data = HttpService:JSONDecode(response)
+        if data.files and data.files["stats.json"] then
+            local content = data.files["stats.json"].content
+            local stats = HttpService:JSONDecode(content)
+            total = stats.count or 0
+        end
+    end)
+    return total
+end
+
+-- ====== СЕРВИСЫ ======
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+
+-- ====== ЛОГИ АПДЕЙТОВ ======
+local updateLogs = {
+    {
+        version = "1.1.1(Beta)",
+        changes = "Добавлена панель разраба с глобальной синхронизацией через Gist и логами апдейта"
+    },
+    {
+        version = "1.0.1(Beta)",
+        changes = "Добавлено сообщение копирование + ютуб ссылка на ключ"
+    }
+}
 
 -- ====== ТЕКСТЫ ======
 local texts = {
@@ -36,6 +72,8 @@ local texts = {
         tab_money = "💰 Деньги",
         tab_main = "🏠 Главная",
         tab_player = "👤 Игрок",
+        tab_creator = "👑 Создатель",
+        tab_logs = "📋 Логи",
         btn_wins = "🏆 +1000 ПОБЕД",
         btn_hell = "💰 +66 HELL МОНЕТ",
         btn_farm = "🦘 АВТО-ФАРМ",
@@ -97,7 +135,32 @@ local texts = {
         antiafk_title = "Анти-АФК",
         err_target = "❌ FirstTarget не найден!",
         copy_success = "✅ Ссылка скопирована в буфер обмена!",
-        select_language_first = "❌ Сначала выберите язык!"
+        select_language_first = "❌ Сначала выберите язык!",
+        creator_title = "👑 ПАНЕЛЬ РАЗРАБОТЧИКА",
+        creator_key_label = "Введите ключ разработчика:",
+        creator_key_error = "❌ НЕВЕРНЫЙ КЛЮЧ РАЗРАБОТЧИКА!",
+        creator_key_success = "✅ ДОСТУП РАЗРЕШЁН!",
+        creator_global_users = "🌍 Всего запусков скрипта: ",
+        creator_local_users = "🟢 Игроков на сервере со скриптом: ",
+        creator_players_list = "📋 Игроки на сервере:",
+        creator_kick_all = "👢 Кикнуть всех на сервере",
+        creator_tp_all = "📍 Телепорт всех к себе",
+        creator_freeze_all = "🧊 Заморозить всех",
+        creator_unfreeze_all = "🔥 Разморозить всех",
+        creator_kill_all = "💀 Убить всех",
+        creator_heal_all = "❤️ Вылечить всех",
+        creator_fling_all = "🌀 Зафлигать всех",
+        creator_unfling_all = "🛑 Стоп флинг",
+        creator_success_kick = "✅ Все игроки кикнуты!",
+        creator_success_tp = "✅ Все игроки телепортированы к вам!",
+        creator_success_freeze = "✅ Все игроки заморожены!",
+        creator_success_unfreeze = "✅ Все игроки разморожены!",
+        creator_success_kill = "✅ Все игроки убиты!",
+        creator_success_heal = "✅ Все игроки вылечены!",
+        creator_success_fling = "✅ Все игроки зафлинганы!",
+        creator_success_unfling = "✅ Флинг остановлен!",
+        creator_has_script = "✅ Со скриптом",
+        creator_no_script = "❌ Без скрипта"
     },
     EN = {
         key_title = "🔐 ENTER KEY",
@@ -114,6 +177,8 @@ local texts = {
         tab_money = "💰 Money",
         tab_main = "🏠 Main",
         tab_player = "👤 Player",
+        tab_creator = "👑 Creator",
+        tab_logs = "📋 Logs",
         btn_wins = "🏆 +1000 WINS",
         btn_hell = "💰 +66 HELL COINS",
         btn_farm = "🦘 AUTO FARM",
@@ -175,7 +240,32 @@ local texts = {
         antiafk_title = "Anti-AFK",
         err_target = "❌ FirstTarget not found!",
         copy_success = "✅ Link copied to clipboard!",
-        select_language_first = "❌ Select language first!"
+        select_language_first = "❌ Select language first!",
+        creator_title = "👑 CREATOR PANEL",
+        creator_key_label = "Enter creator key:",
+        creator_key_error = "❌ WRONG CREATOR KEY!",
+        creator_key_success = "✅ ACCESS GRANTED!",
+        creator_global_users = "🌍 Total script launches: ",
+        creator_local_users = "🟢 Players on server with script: ",
+        creator_players_list = "📋 Players on server:",
+        creator_kick_all = "👢 Kick all on server",
+        creator_tp_all = "📍 Teleport all to me",
+        creator_freeze_all = "🧊 Freeze all",
+        creator_unfreeze_all = "🔥 Unfreeze all",
+        creator_kill_all = "💀 Kill all",
+        creator_heal_all = "❤️ Heal all",
+        creator_fling_all = "🌀 Fling all",
+        creator_unfling_all = "🛑 Stop fling",
+        creator_success_kick = "✅ All players kicked!",
+        creator_success_tp = "✅ All players teleported to you!",
+        creator_success_freeze = "✅ All players frozen!",
+        creator_success_unfreeze = "✅ All players unfrozen!",
+        creator_success_kill = "✅ All players killed!",
+        creator_success_heal = "✅ All players healed!",
+        creator_success_fling = "✅ All players flung!",
+        creator_success_unfling = "✅ Fling stopped!",
+        creator_has_script = "✅ Has script",
+        creator_no_script = "❌ No script"
     }
 }
 
@@ -227,7 +317,7 @@ end
 
 -- ====== ФУНКЦИЯ УВЕДОМЛЕНИЯ О КОПИРОВАНИИ ======
 local function createCopyNotification()
-    local Player = game.Players.LocalPlayer
+    local Player = Players.LocalPlayer
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "Notif_" .. math.random(10000, 99999)
     ScreenGui.Parent = Player:WaitForChild("PlayerGui")
@@ -277,7 +367,6 @@ local function createCopyNotification()
     local tween1 = TweenService:Create(Notification, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
         Position = UDim2.new(1, -270, 0, 20)
     })
-    
     tween1:Play()
     
     task.wait(5)
@@ -285,7 +374,6 @@ local function createCopyNotification()
     local tween2 = TweenService:Create(Notification, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
         Position = UDim2.new(1, 20, 0, 20)
     })
-    
     tween2:Play()
     tween2.Completed:Connect(function()
         ScreenGui:Destroy()
@@ -294,7 +382,7 @@ end
 
 -- ====== ФУНКЦИЯ СОЗДАНИЯ МОБИЛЬНОГО ОКНА ======
 local function createMobileWindow(title, onCallback, offCallback)
-    local Player = game.Players.LocalPlayer
+    local Player = Players.LocalPlayer
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "MW_" .. math.random(10000, 99999)
     ScreenGui.Parent = Player:WaitForChild("PlayerGui")
@@ -378,7 +466,6 @@ local function animateKeySystemIn(MainFrame)
     local tween1 = TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
         Position = UDim2.new(0.5, -200, 0.5, -220)
     })
-    
     local tween2 = TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
         Position = UDim2.new(0.5, -200, 0.5, -200)
     })
@@ -393,7 +480,6 @@ local function animateKeySystemOut(MainFrame, ScreenGui, callback)
     local tween1 = TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
         Position = UDim2.new(0.5, -200, 0.5, -220)
     })
-    
     local tween2 = TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
         Position = UDim2.new(0.5, -200, 1, 100)
     })
@@ -409,7 +495,7 @@ end
 
 -- ====== СОЗДАНИЕ GUI ДЛЯ КЛЮЧА ======
 local function createKeySystem()
-    local Player = game.Players.LocalPlayer
+    local Player = Players.LocalPlayer
     local ScreenGui = Instance.new("ScreenGui")
     ScreenGui.Name = "KS_" .. math.random(10000, 99999)
     ScreenGui.Parent = Player:WaitForChild("PlayerGui")
@@ -475,7 +561,6 @@ local function createKeySystem()
     Title.TextSize = 20
     Title.Parent = MainFrame
     
-    -- Надпись выбора языка (мигающая)
     local LangTitle = Instance.new("TextLabel")
     LangTitle.Name = "L_" .. math.random(10000, 99999)
     LangTitle.Size = UDim2.new(1, 0, 0, 25)
@@ -499,9 +584,9 @@ local function createKeySystem()
     KeyInput.PlaceholderText = "Выберите язык..."
     KeyInput.Text = ""
     KeyInput.Parent = MainFrame
-    KeyInput.Active = false -- Заблокировано
-    KeyInput.Selectable = false -- Нельзя выделить
-    KeyInput.TextEditable = false -- Нельзя редактировать
+    KeyInput.Active = false
+    KeyInput.Selectable = false
+    KeyInput.TextEditable = false
     
     local ErrorLabel = Instance.new("TextLabel")
     ErrorLabel.Name = "E_" .. math.random(10000, 99999)
@@ -561,22 +646,18 @@ local function createKeySystem()
     animateKeySystemIn(MainFrame)
     TweenService:Create(Background, TweenInfo.new(0.4, Enum.EasingStyle.Sine), {BackgroundTransparency = 0.7}):Play()
     
-    -- Анимация мигания надписи выбора языка
     local blinking = true
     local blinkLoop
-    blinkLoop = game:GetService("RunService").Heartbeat:Connect(function()
+    blinkLoop = RunService.Heartbeat:Connect(function()
         if not blinking or languageSelected then
             if blinkLoop then blinkLoop:Disconnect() end
             return
         end
-        -- Плавное изменение прозрачности
         local currentTransparency = LangTitle.TextTransparency
         local targetTransparency = currentTransparency > 0.5 and 0 or 1
-        
         TweenService:Create(LangTitle, TweenInfo.new(0.5, Enum.EasingStyle.Sine), {
             TextTransparency = targetTransparency
         }):Play()
-        
         task.wait(0.6)
     end)
     
@@ -598,7 +679,6 @@ local function createKeySystem()
         createCopyNotification()
     end)
     
-    -- Функция разблокировки поля ключа
     local function unlockKeyInput()
         languageSelected = true
         blinking = false
@@ -608,8 +688,6 @@ local function createKeySystem()
         KeyInput.TextEditable = true
         KeyInput.PlaceholderText = getText("key_label")
         CheckButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
-        
-        -- Плавно скрываем надпись
         TweenService:Create(LangTitle, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {
             TextTransparency = 1
         }):Play()
@@ -621,7 +699,6 @@ local function createKeySystem()
             ErrorLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
             return
         end
-        
         if KeyInput.Text == correctKey then
             ErrorLabel.Text = getText("key_success")
             ErrorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -699,16 +776,16 @@ function loadMainMenu()
         KeySystem = false
     })
 
-    local Player = game.Players.LocalPlayer
+    local Player = Players.LocalPlayer
     local VirtualUser = game:GetService("VirtualUser")
     local UserInputService = game:GetService("UserInputService")
-    local RunService = game:GetService("RunService")
     local screenSize = workspace.CurrentCamera.ViewportSize
     local centerX = screenSize.X / 2
     local centerY = screenSize.Y / 2
 
+    -- ====== ВКЛАДКА: ДЕНЬГИ ======
     local MoneyTab = Window:CreateTab(getText("tab_money"), 4483362458)
-    local MoneySection = MoneyTab:CreateSection("💰 " .. (language == "RU" and "Заработок" or "Earnings"))
+    MoneyTab:CreateSection("💰 " .. (language == "RU" and "Заработок" or "Earnings"))
 
     MoneyTab:CreateButton({
         Name = getText("btn_wins"),
@@ -733,7 +810,7 @@ function loadMainMenu()
         end,
     })
 
-    local WinsBind = MoneyTab:CreateKeybind({
+    MoneyTab:CreateKeybind({
         Name = getText("bind_wins"),
         CurrentKeybind = "Insert",
         HoldToInteract = false,
@@ -782,7 +859,7 @@ function loadMainMenu()
         end,
     })
 
-    local HellBind = MoneyTab:CreateKeybind({
+    MoneyTab:CreateKeybind({
         Name = getText("bind_hell"),
         CurrentKeybind = "Home",
         HoldToInteract = false,
@@ -808,8 +885,9 @@ function loadMainMenu()
         end
     })
 
+    -- ====== ВКЛАДКА: ГЛАВНАЯ ======
     local MainTab = Window:CreateTab(getText("tab_main"), 4483362458)
-    local MainSection = MainTab:CreateSection("⚡ " .. (language == "RU" and "Функции" or "Functions"))
+    MainTab:CreateSection("⚡ " .. (language == "RU" and "Функции" or "Functions"))
 
     local farming = false
     local farmLoop = nil
@@ -885,7 +963,7 @@ function loadMainMenu()
         end
     end
 
-    local FarmBind = MainTab:CreateKeybind({
+    MainTab:CreateKeybind({
         Name = getText("bind_farm"),
         CurrentKeybind = "F8",
         HoldToInteract = false,
@@ -895,7 +973,7 @@ function loadMainMenu()
         end
     })
 
-    local MobileFarmButton = MainTab:CreateButton({
+    MainTab:CreateButton({
         Name = getText("btn_mobile_farm"),
         Callback = function()
             createMobileWindow(getText("mobile_farm_title"), function() StartAutoFarm() end, function() StopAutoFarm() end)
@@ -952,7 +1030,7 @@ function loadMainMenu()
         Rayfield:Notify({Title = getText("jump_title"), Content = getText("success_jump_stop"), Duration = 6.5, Image = 4483362458})
     end
 
-    local JumpBind = MainTab:CreateKeybind({
+    MainTab:CreateKeybind({
         Name = getText("bind_jump"),
         CurrentKeybind = "F9",
         HoldToInteract = false,
@@ -962,7 +1040,7 @@ function loadMainMenu()
         end
     })
 
-    local MobileJumpButton = MainTab:CreateButton({
+    MainTab:CreateButton({
         Name = getText("btn_mobile_jump"),
         Callback = function()
             createMobileWindow(getText("mobile_jump_title"), function() StartInfiniteJumps() end, function() StopInfiniteJumps() end)
@@ -1054,7 +1132,7 @@ function loadMainMenu()
         Rayfield:Notify({Title = getText("mace_title"), Content = getText("success_mace_stop"), Duration = 6.5, Image = 4483362458})
     end
 
-    local MaceBind = MainTab:CreateKeybind({
+    MainTab:CreateKeybind({
         Name = getText("bind_mace"),
         CurrentKeybind = "F10",
         HoldToInteract = false,
@@ -1064,15 +1142,16 @@ function loadMainMenu()
         end
     })
 
-    local MobileMaceButton = MainTab:CreateButton({
+    MainTab:CreateButton({
         Name = getText("btn_mobile_mace"),
         Callback = function()
             createMobileWindow(getText("mobile_mace_title"), function() StartAutoMace() end, function() StopAutoMace() end)
         end,
     })
 
+    -- ====== ВКЛАДКА: ИГРОК ======
     local PlayerTab = Window:CreateTab(getText("tab_player"), 4483362458)
-    local PlayerSection = PlayerTab:CreateSection("👤 " .. (language == "RU" and "Параметры игрока" or "Player Settings"))
+    PlayerTab:CreateSection("👤 " .. (language == "RU" and "Параметры игрока" or "Player Settings"))
 
     local noclipActive = false
     local noclipLoop = nil
@@ -1106,7 +1185,7 @@ function loadMainMenu()
         end,
     })
 
-    local NoclipBind = PlayerTab:CreateKeybind({
+    PlayerTab:CreateKeybind({
         Name = getText("bind_noclip"),
         CurrentKeybind = "F11",
         HoldToInteract = false,
@@ -1116,7 +1195,7 @@ function loadMainMenu()
         end
     })
 
-    local MobileNoclipButton = PlayerTab:CreateButton({
+    PlayerTab:CreateButton({
         Name = getText("btn_mobile_noclip"),
         Callback = function()
             createMobileWindow(getText("mobile_noclip_title"), function() noclipActive = true end, function() noclipActive = false end)
@@ -1166,7 +1245,7 @@ function loadMainMenu()
                 espActive = true
                 RunService.Heartbeat:Connect(function()
                     if not espActive then return end
-                    for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
+                    for _, otherPlayer in ipairs(Players:GetPlayers()) do
                         if otherPlayer ~= Player and otherPlayer.Character then
                             local highlight = otherPlayer.Character:FindFirstChild("ESPHighlight")
                             if not highlight then
@@ -1181,7 +1260,7 @@ function loadMainMenu()
                 end)
             else
                 espActive = false
-                for _, otherPlayer in ipairs(game.Players:GetPlayers()) do
+                for _, otherPlayer in ipairs(Players:GetPlayers()) do
                     if otherPlayer.Character then
                         local highlight = otherPlayer.Character:FindFirstChild("ESPHighlight")
                         if highlight then highlight:Destroy() end
@@ -1191,7 +1270,7 @@ function loadMainMenu()
         end,
     })
 
-    local EspBind = PlayerTab:CreateKeybind({
+    PlayerTab:CreateKeybind({
         Name = getText("bind_esp"),
         CurrentKeybind = "F12",
         HoldToInteract = false,
@@ -1201,7 +1280,7 @@ function loadMainMenu()
         end
     })
 
-    local MobileEspButton = PlayerTab:CreateButton({
+    PlayerTab:CreateButton({
         Name = getText("btn_mobile_esp"),
         Callback = function()
             createMobileWindow(getText("mobile_esp_title"), function() espActive = true end, function() espActive = false end)
@@ -1230,7 +1309,7 @@ function loadMainMenu()
         end,
     })
 
-    local AntiAfkBind = PlayerTab:CreateKeybind({
+    PlayerTab:CreateKeybind({
         Name = getText("bind_antiafk"),
         CurrentKeybind = "Pause",
         HoldToInteract = false,
@@ -1240,13 +1319,182 @@ function loadMainMenu()
         end
     })
 
-    local MobileAntiAfkButton = PlayerTab:CreateButton({
+    PlayerTab:CreateButton({
         Name = getText("btn_mobile_antiafk"),
         Callback = function()
             createMobileWindow(getText("mobile_antiafk_title"), function() antiafkActive = true end, function() antiafkActive = false end)
         end,
     })
 
+    -- ====== ВКЛАДКА: ЛОГИ ======
+    local LogsTab = Window:CreateTab(getText("tab_logs"), 4483362458)
+    LogsTab:CreateSection("📋 " .. (language == "RU" and "История обновлений" or "Update History"))
+
+    for _, log in ipairs(updateLogs) do
+        LogsTab:CreateLabel("🔹 v" .. log.version)
+        LogsTab:CreateParagraph({
+            Title = "Изменения:",
+            Content = log.changes
+        })
+    end
+
+    -- ====== ВКЛАДКА: СОЗДАТЕЛЬ ======
+    local CreatorTab = Window:CreateTab(getText("tab_creator"), 4483362458)
+    CreatorTab:CreateSection("👑 " .. (language == "RU" and "Доступ разработчика" or "Developer Access"))
+
+    local creatorAccessGranted = false
+    local CreatorKeyInput = CreatorTab:CreateInput({
+        Name = getText("creator_key_label"),
+        PlaceholderText = "Ключ...",
+        RemoveTextAfterFocusLost = false,
+        Callback = function(Text)
+            if Text == creatorKey then
+                creatorAccessGranted = true
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_key_success"), Duration = 6.5, Image = 4483362458})
+                loadCreatorPanel()
+            else
+                Rayfield:Notify({Title = getText("error_title"), Content = getText("creator_key_error"), Duration = 6.5, Image = 4483362458})
+            end
+        end,
+    })
+
+    function loadCreatorPanel()
+        if not creatorAccessGranted then return end
+        
+        CreatorTab:CreateSection("🌍 " .. (language == "RU" and "Статистика" or "Statistics"))
+        
+        local globalUsers = getGlobalScriptUsers()
+        CreatorTab:CreateLabel(getText("creator_global_users") .. tostring(globalUsers))
+        
+        CreatorTab:CreateSection("📋 " .. (language == "RU" and "Игроки на сервере" or "Players on server"))
+        
+        for _, p in ipairs(Players:GetPlayers()) do
+            local status = getText("creator_no_script")
+            if p:FindFirstChild("ILOVEKOCMOC_Active") then
+                status = getText("creator_has_script")
+            end
+            CreatorTab:CreateLabel("👤 " .. p.Name .. " - " .. status)
+        end
+        
+        CreatorTab:CreateSection("⚡ " .. (language == "RU" and "Действия" or "Actions"))
+        
+        CreatorTab:CreateButton({
+            Name = getText("creator_kick_all"),
+            Callback = function()
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= Player then
+                        pcall(function() p:Kick("Кикнут разработчиком") end)
+                    end
+                end
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_kick"), Duration = 6.5, Image = 4483362458})
+            end,
+        })
+        
+        CreatorTab:CreateButton({
+            Name = getText("creator_tp_all"),
+            Callback = function()
+                local myChar = Player.Character
+                if myChar then
+                    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
+                    if myHRP then
+                        for _, p in ipairs(Players:GetPlayers()) do
+                            if p ~= Player and p.Character then
+                                local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+                                if hrp then hrp.CFrame = myHRP.CFrame + Vector3.new(0, 2, 0) end
+                            end
+                        end
+                    end
+                end
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_tp"), Duration = 6.5, Image = 4483362458})
+            end,
+        })
+        
+        CreatorTab:CreateButton({
+            Name = getText("creator_freeze_all"),
+            Callback = function()
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= Player and p.Character then
+                        local humanoid = p.Character:FindFirstChild("Humanoid")
+                        if humanoid then humanoid.WalkSpeed = 0 humanoid.JumpPower = 0 end
+                    end
+                end
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_freeze"), Duration = 6.5, Image = 4483362458})
+            end,
+        })
+        
+        CreatorTab:CreateButton({
+            Name = getText("creator_unfreeze_all"),
+            Callback = function()
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= Player and p.Character then
+                        local humanoid = p.Character:FindFirstChild("Humanoid")
+                        if humanoid then humanoid.WalkSpeed = 16 humanoid.JumpPower = 50 end
+                    end
+                end
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_unfreeze"), Duration = 6.5, Image = 4483362458})
+            end,
+        })
+        
+        CreatorTab:CreateButton({
+            Name = getText("creator_kill_all"),
+            Callback = function()
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= Player and p.Character then
+                        local humanoid = p.Character:FindFirstChild("Humanoid")
+                        if humanoid then humanoid.Health = 0 end
+                    end
+                end
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_kill"), Duration = 6.5, Image = 4483362458})
+            end,
+        })
+        
+        CreatorTab:CreateButton({
+            Name = getText("creator_heal_all"),
+            Callback = function()
+                for _, p in ipairs(Players:GetPlayers()) do
+                    if p ~= Player and p.Character then
+                        local humanoid = p.Character:FindFirstChild("Humanoid")
+                        if humanoid then humanoid.Health = humanoid.MaxHealth end
+                    end
+                end
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_heal"), Duration = 6.5, Image = 4483362458})
+            end,
+        })
+        
+        local flingActive = false
+        local flingLoop = nil
+        
+        CreatorTab:CreateButton({
+            Name = getText("creator_fling_all"),
+            Callback = function()
+                flingActive = true
+                flingLoop = RunService.Heartbeat:Connect(function()
+                    if not flingActive then if flingLoop then flingLoop:Disconnect() flingLoop = nil end return end
+                    for _, p in ipairs(Players:GetPlayers()) do
+                        if p ~= Player and p.Character then
+                            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+                            if hrp then
+                                hrp.Velocity = Vector3.new(math.random(-50, 50), math.random(-50, 50), math.random(-50, 50))
+                                hrp.RotVelocity = Vector3.new(math.random(-10, 10), math.random(-10, 10), math.random(-10, 10))
+                            end
+                        end
+                    end
+                end)
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_fling"), Duration = 6.5, Image = 4483362458})
+            end,
+        })
+        
+        CreatorTab:CreateButton({
+            Name = getText("creator_unfling_all"),
+            Callback = function()
+                flingActive = false
+                if flingLoop then flingLoop:Disconnect() flingLoop = nil end
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_unfling"), Duration = 6.5, Image = 4483362458})
+            end,
+        })
+    end
+
+    -- ====== КНОПКА УНИЧТОЖЕНИЯ ======
     local SettingsTab = Window:CreateTab("⚙️ " .. (language == "RU" and "Настройки" or "Settings"), 4483362458)
     SettingsTab:CreateButton({
         Name = getText("btn_close"),
@@ -1274,4 +1522,4 @@ end
 -- ====== ЗАПУСК ======
 createKeySystem()
 
-print("✅ +1 JUMP MACE ESCAPE v1.0.1(Beta) LOADED")
+print("✅ +1 JUMP MACE ESCAPE v1.1.1(Beta) LOADED")
