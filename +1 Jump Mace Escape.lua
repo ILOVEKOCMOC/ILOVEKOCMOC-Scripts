@@ -19,7 +19,7 @@ local ScriptVersion = "1.1.1(Beta)"
 local KeyURL = "https://youtu.be/9Lv6lhK5n6E"
 
 -- ====== GITHUB GIST СИНХРОНИЗАЦИЯ ======
-local GistID = "e1982de6efc371e9265f5b12bc8c0631"
+local GistID = "a0b0ce3e4cff2518b41653f8a9004762"
 local GistRawURL = "https://gist.githubusercontent.com/ILOVEKOCMOC/" .. GistID .. "/raw/"
 
 local function getGlobalScriptUsers()
