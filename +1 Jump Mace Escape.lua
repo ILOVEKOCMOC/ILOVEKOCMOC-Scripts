@@ -1,7 +1,7 @@
 --[[
     +1 JUMP MACE ESCAPE
     YT:@ILOVEKOCMOC
-    Version: 1.0.0
+    Version: 1.0.1(Beta)
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -9,12 +9,13 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 -- ====== ПЕРЕМЕННЫЕ ======
 local correctKey = "1337"
 local language = "RU"
+local languageSelected = false -- Язык не выбран
 local keyAccepted = false
 local savedPosition = nil
 local savedTargetPosition = nil
 local savedTransparency = nil
-local ScriptVersion = "1.0.0(Beta)"
-local KeyURL = "https://youtu.be/9Lv6lhK5n6E" -- ТВОЯ ССЫЛКА НА ВИДЕО
+local ScriptVersion = "1.0.1(Beta)"
+local KeyURL = "https://youtu.be/9Lv6lhK5n6E"
 
 local TweenService = game:GetService("TweenService")
 
@@ -28,6 +29,7 @@ local texts = {
         get_key = "📺 ПОЛУЧИТЬ КЛЮЧ",
         version_text = "Версия: " .. ScriptVersion,
         lang_select = "🌍 ВЫБЕРИТЕ ЯЗЫК:",
+        lang_select_wait = "👇 ВЫБЕРИТЕ ЯЗЫК ЧТОБЫ ПРОДОЛЖИТЬ 👇",
         lang_ru = "🇷🇺 РУССКИЙ",
         lang_en = "🇬🇧 АНГЛИЙСКИЙ",
         menu_title = "🔥 +1 JUMP MACE ESCAPE",
@@ -94,7 +96,8 @@ local texts = {
         esp_title = "ESP",
         antiafk_title = "Анти-АФК",
         err_target = "❌ FirstTarget не найден!",
-        copy_success = "✅ Ссылка скопирована в буфер обмена!"
+        copy_success = "✅ Ссылка скопирована в буфер обмена!",
+        select_language_first = "❌ Сначала выберите язык!"
     },
     EN = {
         key_title = "🔐 ENTER KEY",
@@ -104,6 +107,7 @@ local texts = {
         get_key = "📺 GET KEY",
         version_text = "Version: " .. ScriptVersion,
         lang_select = "🌍 SELECT LANGUAGE:",
+        lang_select_wait = "👇 SELECT LANGUAGE TO CONTINUE 👇",
         lang_ru = "🇷🇺 RUSSIAN",
         lang_en = "🇬🇧 ENGLISH",
         menu_title = "🔥 +1 JUMP MACE ESCAPE",
@@ -170,7 +174,8 @@ local texts = {
         esp_title = "ESP",
         antiafk_title = "Anti-AFK",
         err_target = "❌ FirstTarget not found!",
-        copy_success = "✅ Link copied to clipboard!"
+        copy_success = "✅ Link copied to clipboard!",
+        select_language_first = "❌ Select language first!"
     }
 }
 
@@ -218,6 +223,73 @@ local function restoreTargetTransparency(targetPart)
         end
     end
     savedTransparency = nil
+end
+
+-- ====== ФУНКЦИЯ УВЕДОМЛЕНИЯ О КОПИРОВАНИИ ======
+local function createCopyNotification()
+    local Player = game.Players.LocalPlayer
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.Name = "Notif_" .. math.random(10000, 99999)
+    ScreenGui.Parent = Player:WaitForChild("PlayerGui")
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    ScreenGui.Archivable = false
+    
+    local Notification = Instance.new("Frame")
+    Notification.Name = "N_" .. math.random(10000, 99999)
+    Notification.Size = UDim2.new(0, 250, 0, 40)
+    Notification.Position = UDim2.new(1, 20, 0, 20)
+    Notification.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+    Notification.BorderSizePixel = 0
+    Notification.Parent = ScreenGui
+    
+    local UICorner = Instance.new("UICorner")
+    UICorner.CornerRadius = UDim.new(0, 8)
+    UICorner.Parent = Notification
+    
+    local UIStroke = Instance.new("UIStroke")
+    UIStroke.Color = Color3.fromRGB(0, 200, 100)
+    UIStroke.Thickness = 2
+    UIStroke.Parent = Notification
+    
+    local Icon = Instance.new("TextLabel")
+    Icon.Name = "I_" .. math.random(10000, 99999)
+    Icon.Size = UDim2.new(0, 30, 1, 0)
+    Icon.Position = UDim2.new(0, 10, 0, 0)
+    Icon.Text = "📋"
+    Icon.BackgroundTransparency = 1
+    Icon.Font = Enum.Font.GothamBold
+    Icon.TextSize = 18
+    Icon.Parent = Notification
+    
+    local Text = Instance.new("TextLabel")
+    Text.Name = "T_" .. math.random(10000, 99999)
+    Text.Size = UDim2.new(1, -50, 1, 0)
+    Text.Position = UDim2.new(0, 45, 0, 0)
+    Text.Text = getText("copy_success")
+    Text.TextColor3 = Color3.fromRGB(255, 255, 255)
+    Text.BackgroundTransparency = 1
+    Text.Font = Enum.Font.Gotham
+    Text.TextSize = 12
+    Text.TextXAlignment = Enum.TextXAlignment.Left
+    Text.Parent = Notification
+    
+    local tween1 = TweenService:Create(Notification, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
+        Position = UDim2.new(1, -270, 0, 20)
+    })
+    
+    tween1:Play()
+    
+    task.wait(5)
+    
+    local tween2 = TweenService:Create(Notification, TweenInfo.new(0.3, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
+        Position = UDim2.new(1, 20, 0, 20)
+    })
+    
+    tween2:Play()
+    tween2.Completed:Connect(function()
+        ScreenGui:Destroy()
+    end)
 end
 
 -- ====== ФУНКЦИЯ СОЗДАНИЯ МОБИЛЬНОГО ОКНА ======
@@ -403,6 +475,18 @@ local function createKeySystem()
     Title.TextSize = 20
     Title.Parent = MainFrame
     
+    -- Надпись выбора языка (мигающая)
+    local LangTitle = Instance.new("TextLabel")
+    LangTitle.Name = "L_" .. math.random(10000, 99999)
+    LangTitle.Size = UDim2.new(1, 0, 0, 25)
+    LangTitle.Position = UDim2.new(0, 0, 0.7, 0)
+    LangTitle.Text = getText("lang_select_wait")
+    LangTitle.TextColor3 = Color3.fromRGB(255, 200, 0)
+    LangTitle.BackgroundTransparency = 1
+    LangTitle.Font = Enum.Font.GothamBold
+    LangTitle.TextSize = 14
+    LangTitle.Parent = MainFrame
+    
     local KeyInput = Instance.new("TextBox")
     KeyInput.Name = "K_" .. math.random(10000, 99999)
     KeyInput.Size = UDim2.new(0.6, 0, 0, 40)
@@ -412,9 +496,12 @@ local function createKeySystem()
     KeyInput.Font = Enum.Font.Gotham
     KeyInput.TextSize = 18
     KeyInput.ClearTextOnFocus = false
-    KeyInput.PlaceholderText = "Введите ключ..."
+    KeyInput.PlaceholderText = "Выберите язык..."
     KeyInput.Text = ""
     KeyInput.Parent = MainFrame
+    KeyInput.Active = false -- Заблокировано
+    KeyInput.Selectable = false -- Нельзя выделить
+    KeyInput.TextEditable = false -- Нельзя редактировать
     
     local ErrorLabel = Instance.new("TextLabel")
     ErrorLabel.Name = "E_" .. math.random(10000, 99999)
@@ -432,7 +519,7 @@ local function createKeySystem()
     CheckButton.Size = UDim2.new(0.4, 0, 0, 40)
     CheckButton.Position = UDim2.new(0.3, 0, 0.42, 0)
     CheckButton.Text = "✅ ПРОВЕРИТЬ"
-    CheckButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+    CheckButton.BackgroundColor3 = Color3.fromRGB(100, 100, 100)
     CheckButton.TextColor3 = Color3.fromRGB(255, 255, 255)
     CheckButton.Font = Enum.Font.GothamBold
     CheckButton.TextSize = 14
@@ -448,17 +535,6 @@ local function createKeySystem()
     GetKeyButton.Font = Enum.Font.GothamBold
     GetKeyButton.TextSize = 14
     GetKeyButton.Parent = MainFrame
-    
-    local LangTitle = Instance.new("TextLabel")
-    LangTitle.Name = "L_" .. math.random(10000, 99999)
-    LangTitle.Size = UDim2.new(1, 0, 0, 25)
-    LangTitle.Position = UDim2.new(0, 0, 0.68, 0)
-    LangTitle.Text = "🌍 ВЫБЕРИТЕ ЯЗЫК:"
-    LangTitle.TextColor3 = Color3.fromRGB(200, 200, 200)
-    LangTitle.BackgroundTransparency = 1
-    LangTitle.Font = Enum.Font.Gotham
-    LangTitle.TextSize = 14
-    LangTitle.Parent = MainFrame
     
     local RUBtn = Instance.new("TextButton")
     RUBtn.Name = "RU_" .. math.random(10000, 99999)
@@ -485,7 +561,27 @@ local function createKeySystem()
     animateKeySystemIn(MainFrame)
     TweenService:Create(Background, TweenInfo.new(0.4, Enum.EasingStyle.Sine), {BackgroundTransparency = 0.7}):Play()
     
+    -- Анимация мигания надписи выбора языка
+    local blinking = true
+    local blinkLoop
+    blinkLoop = game:GetService("RunService").Heartbeat:Connect(function()
+        if not blinking or languageSelected then
+            if blinkLoop then blinkLoop:Disconnect() end
+            return
+        end
+        -- Плавное изменение прозрачности
+        local currentTransparency = LangTitle.TextTransparency
+        local targetTransparency = currentTransparency > 0.5 and 0 or 1
+        
+        TweenService:Create(LangTitle, TweenInfo.new(0.5, Enum.EasingStyle.Sine), {
+            TextTransparency = targetTransparency
+        }):Play()
+        
+        task.wait(0.6)
+    end)
+    
     local function closeKeySystem()
+        blinking = false
         animateKeySystemOut(MainFrame, ScreenGui, function()
             ScreenGui:Destroy()
         end)
@@ -499,10 +595,33 @@ local function createKeySystem()
         pcall(function()
             setclipboard(KeyURL)
         end)
-        Rayfield:Notify({Title = "Get Key", Content = getText("copy_success"), Duration = 6.5, Image = 4483362458})
+        createCopyNotification()
     end)
     
+    -- Функция разблокировки поля ключа
+    local function unlockKeyInput()
+        languageSelected = true
+        blinking = false
+        if blinkLoop then blinkLoop:Disconnect() end
+        KeyInput.Active = true
+        KeyInput.Selectable = true
+        KeyInput.TextEditable = true
+        KeyInput.PlaceholderText = getText("key_label")
+        CheckButton.BackgroundColor3 = Color3.fromRGB(0, 200, 100)
+        
+        -- Плавно скрываем надпись
+        TweenService:Create(LangTitle, TweenInfo.new(0.3, Enum.EasingStyle.Sine), {
+            TextTransparency = 1
+        }):Play()
+    end
+    
     CheckButton.MouseButton1Click:Connect(function()
+        if not languageSelected then
+            ErrorLabel.Text = getText("select_language_first")
+            ErrorLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+            return
+        end
+        
         if KeyInput.Text == correctKey then
             ErrorLabel.Text = getText("key_success")
             ErrorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -519,7 +638,7 @@ local function createKeySystem()
     end)
     
     KeyInput.FocusLost:Connect(function(enterPressed)
-        if enterPressed then
+        if enterPressed and languageSelected then
             if KeyInput.Text == correctKey then
                 ErrorLabel.Text = getText("key_success")
                 ErrorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
@@ -538,11 +657,11 @@ local function createKeySystem()
     
     RUBtn.MouseButton1Click:Connect(function()
         language = "RU"
+        unlockKeyInput()
         Title.Text = getText("key_title")
         KeyInput.PlaceholderText = getText("key_label")
         CheckButton.Text = "✅ " .. getText("key_success"):gsub("✅ ", "")
         GetKeyButton.Text = getText("get_key")
-        LangTitle.Text = getText("lang_select")
         RUBtn.Text = getText("lang_ru")
         ENBtn.Text = getText("lang_en")
         ErrorLabel.Text = ""
@@ -550,11 +669,11 @@ local function createKeySystem()
     
     ENBtn.MouseButton1Click:Connect(function()
         language = "EN"
+        unlockKeyInput()
         Title.Text = getText("key_title")
         KeyInput.PlaceholderText = getText("key_label")
         CheckButton.Text = "✅ " .. getText("key_success"):gsub("✅ ", "")
         GetKeyButton.Text = getText("get_key")
-        LangTitle.Text = getText("lang_select")
         RUBtn.Text = getText("lang_ru")
         ENBtn.Text = getText("lang_en")
         ErrorLabel.Text = ""
@@ -1155,4 +1274,4 @@ end
 -- ====== ЗАПУСК ======
 createKeySystem()
 
-print("✅ +1 JUMP MACE ESCAPE LOADED")
+print("✅ +1 JUMP MACE ESCAPE v1.0.1(Beta) LOADED")
