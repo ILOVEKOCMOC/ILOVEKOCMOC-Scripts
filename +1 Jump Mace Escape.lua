@@ -45,6 +45,10 @@ local Players = game:GetService("Players")
 
 -- ====== ЛОГИ АПДЕЙТОВ ======
 local updateLogs = {
+        {
+        version = "hi",
+        changes = "this iam ILOVEKOCMOC"
+    },
     {
         version = "1.1.1(Beta)",
         changes = "Добавлена панель разраба с глобальной синхронизацией через Gist и логами апдейта"
