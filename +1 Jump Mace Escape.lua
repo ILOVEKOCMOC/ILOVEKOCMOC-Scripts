@@ -13,8 +13,8 @@ local keyAccepted = false
 local savedPosition = nil
 local savedTargetPosition = nil
 local savedTransparency = nil
-local ScriptVersion = "1.0.0"
-local KeyURL = "https://youtu.be/9Lv6lhK5n6E" -- СЮДА ВСТАВЬ ССЫЛКУ
+local ScriptVersion = "1.0.0(Beta)"
+local KeyURL = "https://youtu.be/9Lv6lhK5n6E" -- ТВОЯ ССЫЛКА НА ВИДЕО
 
 local TweenService = game:GetService("TweenService")
 
@@ -93,7 +93,8 @@ local texts = {
         noclip_title = "Ноклип",
         esp_title = "ESP",
         antiafk_title = "Анти-АФК",
-        err_target = "❌ FirstTarget не найден!"
+        err_target = "❌ FirstTarget не найден!",
+        copy_success = "✅ Ссылка скопирована в буфер обмена!"
     },
     EN = {
         key_title = "🔐 ENTER KEY",
@@ -168,7 +169,8 @@ local texts = {
         noclip_title = "Noclip",
         esp_title = "ESP",
         antiafk_title = "Anti-AFK",
-        err_target = "❌ FirstTarget not found!"
+        err_target = "❌ FirstTarget not found!",
+        copy_success = "✅ Link copied to clipboard!"
     }
 }
 
@@ -298,16 +300,13 @@ end
 
 -- ====== АНИМАЦИЯ ДЛЯ КЛЮЧ СИСТЕМЫ ======
 local function animateKeySystemIn(MainFrame)
-    -- Начальная позиция: за нижней частью экрана
     MainFrame.Position = UDim2.new(0.5, -200, 1, 100)
     MainFrame.Visible = true
     
-    -- Поднимаемся чуть выше центра
     local tween1 = TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
         Position = UDim2.new(0.5, -200, 0.5, -220)
     })
     
-    -- Опускаемся в центр
     local tween2 = TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
         Position = UDim2.new(0.5, -200, 0.5, -200)
     })
@@ -319,12 +318,10 @@ local function animateKeySystemIn(MainFrame)
 end
 
 local function animateKeySystemOut(MainFrame, ScreenGui, callback)
-    -- Поднимаемся чуть выше центра
     local tween1 = TweenService:Create(MainFrame, TweenInfo.new(0.2, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
         Position = UDim2.new(0.5, -200, 0.5, -220)
     })
     
-    -- Уходим в самый низ за экран
     local tween2 = TweenService:Create(MainFrame, TweenInfo.new(0.4, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {
         Position = UDim2.new(0.5, -200, 1, 100)
     })
@@ -373,7 +370,6 @@ local function createKeySystem()
     UIStroke.Thickness = 2
     UIStroke.Parent = MainFrame
     
-    -- Крестик
     local CloseButton = Instance.new("TextButton")
     CloseButton.Name = "X_" .. math.random(10000, 99999)
     CloseButton.Size = UDim2.new(0, 25, 0, 25)
@@ -385,7 +381,6 @@ local function createKeySystem()
     CloseButton.TextSize = 14
     CloseButton.Parent = MainFrame
     
-    -- Версия
     local VersionLabel = Instance.new("TextLabel")
     VersionLabel.Name = "V_" .. math.random(10000, 99999)
     VersionLabel.Size = UDim2.new(1, 0, 0, 25)
@@ -487,28 +482,24 @@ local function createKeySystem()
     ENBtn.TextSize = 12
     ENBtn.Parent = MainFrame
     
-    -- Запускаем анимацию появления
     animateKeySystemIn(MainFrame)
-    
-    -- Затемняем фон
     TweenService:Create(Background, TweenInfo.new(0.4, Enum.EasingStyle.Sine), {BackgroundTransparency = 0.7}):Play()
     
-    -- Функция закрытия
     local function closeKeySystem()
         animateKeySystemOut(MainFrame, ScreenGui, function()
             ScreenGui:Destroy()
         end)
     end
     
-    -- Крестик
     CloseButton.MouseButton1Click:Connect(function()
         closeKeySystem()
     end)
     
-    -- Get Key button
     GetKeyButton.MouseButton1Click:Connect(function()
-        setclipboard(KeyURL)
-        Rayfield:Notify({Title = "Key", Content = "Ссылка скопирована!", Duration = 6.5, Image = 4483362458})
+        pcall(function()
+            setclipboard(KeyURL)
+        end)
+        Rayfield:Notify({Title = "Get Key", Content = getText("copy_success"), Duration = 6.5, Image = 4483362458})
     end)
     
     CheckButton.MouseButton1Click:Connect(function()
@@ -597,7 +588,6 @@ function loadMainMenu()
     local centerX = screenSize.X / 2
     local centerY = screenSize.Y / 2
 
-    -- ====== ВКЛАДКА: ДЕНЬГИ ======
     local MoneyTab = Window:CreateTab(getText("tab_money"), 4483362458)
     local MoneySection = MoneyTab:CreateSection("💰 " .. (language == "RU" and "Заработок" or "Earnings"))
 
@@ -699,11 +689,9 @@ function loadMainMenu()
         end
     })
 
-    -- ====== ВКЛАДКА: ГЛАВНАЯ ======
     local MainTab = Window:CreateTab(getText("tab_main"), 4483362458)
     local MainSection = MainTab:CreateSection("⚡ " .. (language == "RU" and "Функции" or "Functions"))
 
-    -- ФАРМ
     local farming = false
     local farmLoop = nil
     local posLoop = nil
@@ -795,7 +783,6 @@ function loadMainMenu()
         end,
     })
 
-    -- ПРЫЖКИ
     local infiniteJumps = false
     local jumpLoop = nil
 
@@ -863,7 +850,6 @@ function loadMainMenu()
         end,
     })
 
-    -- MACE
     local maceActive = false
     local maceLoop = nil
     local maceSpeed = 5
@@ -966,11 +952,9 @@ function loadMainMenu()
         end,
     })
 
-    -- ====== ВКЛАДКА: ИГРОК ======
     local PlayerTab = Window:CreateTab(getText("tab_player"), 4483362458)
     local PlayerSection = PlayerTab:CreateSection("👤 " .. (language == "RU" and "Параметры игрока" or "Player Settings"))
 
-    -- НОКЛИП
     local noclipActive = false
     local noclipLoop = nil
 
@@ -1020,7 +1004,6 @@ function loadMainMenu()
         end,
     })
 
-    -- СКОРОСТЬ
     PlayerTab:CreateSlider({
         Name = getText("speed_value"),
         Range = {16, 300},
@@ -1037,7 +1020,6 @@ function loadMainMenu()
         end,
     })
 
-    -- СИЛА ПРЫЖКА
     PlayerTab:CreateSlider({
         Name = getText("jump_value"),
         Range = {50, 300},
@@ -1054,7 +1036,6 @@ function loadMainMenu()
         end,
     })
 
-    -- ESP
     local espActive = false
 
     local EspToggle = PlayerTab:CreateToggle({
@@ -1108,7 +1089,6 @@ function loadMainMenu()
         end,
     })
 
-    -- АНТИ-АФК
     local antiafkActive = false
     local antiafkLoop = nil
 
@@ -1148,7 +1128,6 @@ function loadMainMenu()
         end,
     })
 
-    -- ====== КНОПКА УНИЧТОЖЕНИЯ ======
     local SettingsTab = Window:CreateTab("⚙️ " .. (language == "RU" and "Настройки" or "Settings"), 4483362458)
     SettingsTab:CreateButton({
         Name = getText("btn_close"),
