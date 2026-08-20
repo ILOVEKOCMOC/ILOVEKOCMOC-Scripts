@@ -19,22 +19,33 @@ local ScriptVersion = "1.1.1(Beta)"
 local KeyURL = "https://youtu.be/9Lv6lhK5n6E"
 
 -- ====== GITHUB GIST СИНХРОНИЗАЦИЯ ======
--- Создай Gist на https://gist.github.com
--- Содержимое: {"count":0}
-local GistID = "e1982de6efc371e9265f5b12bc8c0631" -- Вставь сюда ID твоего Gist
+local GistID = "e1982de6efc371e9265f5b12bc8c0631"
+local GistRawURL = "https://gist.githubusercontent.com/ILOVEKOCMOC/" .. GistID .. "/raw/"
 
 local function getGlobalScriptUsers()
     local total = 0
     pcall(function()
-        local response = game:HttpGet("https://api.github.com/ILOVEKOCMOC/" .. GistID)
-        local data = HttpService:JSONDecode(response)
-        if data.files and data.files["stats.json"] then
-            local content = data.files["stats.json"].content
-            local stats = HttpService:JSONDecode(content)
+        local response = game:HttpGet(GistRawURL .. "stats.json")
+        if response and response ~= "404: Not Found" then
+            local stats = HttpService:JSONDecode(response)
             total = stats.count or 0
         end
     end)
     return total
+end
+
+local function getGlobalPlayersList()
+    local players = {}
+    pcall(function()
+        local response = game:HttpGet(GistRawURL .. "players.json")
+        if response and response ~= "404: Not Found" then
+            local data = HttpService:JSONDecode(response)
+            if data.players then
+                players = data.players
+            end
+        end
+    end)
+    return players
 end
 
 -- ====== СЕРВИСЫ ======
@@ -45,7 +56,7 @@ local Players = game:GetService("Players")
 
 -- ====== ЛОГИ АПДЕЙТОВ ======
 local updateLogs = {
-        {
+    {
         version = "hi",
         changes = "this iam ILOVEKOCMOC"
     },
@@ -145,8 +156,8 @@ local texts = {
         creator_key_error = "❌ НЕВЕРНЫЙ КЛЮЧ РАЗРАБОТЧИКА!",
         creator_key_success = "✅ ДОСТУП РАЗРЕШЁН!",
         creator_global_users = "🌍 Всего запусков скрипта: ",
-        creator_local_users = "🟢 Игроков на сервере со скриптом: ",
-        creator_players_list = "📋 Игроки на сервере:",
+        creator_global_players = "🌍 Всего игроков со скриптом: ",
+        creator_players_list = "📋 Глобальный список игроков:",
         creator_kick_all = "👢 Кикнуть всех на сервере",
         creator_tp_all = "📍 Телепорт всех к себе",
         creator_freeze_all = "🧊 Заморозить всех",
@@ -162,9 +173,7 @@ local texts = {
         creator_success_kill = "✅ Все игроки убиты!",
         creator_success_heal = "✅ Все игроки вылечены!",
         creator_success_fling = "✅ Все игроки зафлинганы!",
-        creator_success_unfling = "✅ Флинг остановлен!",
-        creator_has_script = "✅ Со скриптом",
-        creator_no_script = "❌ Без скрипта"
+        creator_success_unfling = "✅ Флинг остановлен!"
     },
     EN = {
         key_title = "🔐 ENTER KEY",
@@ -250,8 +259,8 @@ local texts = {
         creator_key_error = "❌ WRONG CREATOR KEY!",
         creator_key_success = "✅ ACCESS GRANTED!",
         creator_global_users = "🌍 Total script launches: ",
-        creator_local_users = "🟢 Players on server with script: ",
-        creator_players_list = "📋 Players on server:",
+        creator_global_players = "🌍 Total players with script: ",
+        creator_players_list = "📋 Global player list:",
         creator_kick_all = "👢 Kick all on server",
         creator_tp_all = "📍 Teleport all to me",
         creator_freeze_all = "🧊 Freeze all",
@@ -267,9 +276,7 @@ local texts = {
         creator_success_kill = "✅ All players killed!",
         creator_success_heal = "✅ All players healed!",
         creator_success_fling = "✅ All players flung!",
-        creator_success_unfling = "✅ Fling stopped!",
-        creator_has_script = "✅ Has script",
-        creator_no_script = "❌ No script"
+        creator_success_unfling = "✅ Fling stopped!"
     }
 }
 
@@ -787,7 +794,6 @@ function loadMainMenu()
     local centerX = screenSize.X / 2
     local centerY = screenSize.Y / 2
 
-    -- ====== ВКЛАДКА: ДЕНЬГИ ======
     local MoneyTab = Window:CreateTab(getText("tab_money"), 4483362458)
     MoneyTab:CreateSection("💰 " .. (language == "RU" and "Заработок" or "Earnings"))
 
@@ -889,7 +895,6 @@ function loadMainMenu()
         end
     })
 
-    -- ====== ВКЛАДКА: ГЛАВНАЯ ======
     local MainTab = Window:CreateTab(getText("tab_main"), 4483362458)
     MainTab:CreateSection("⚡ " .. (language == "RU" and "Функции" or "Functions"))
 
@@ -1153,7 +1158,6 @@ function loadMainMenu()
         end,
     })
 
-    -- ====== ВКЛАДКА: ИГРОК ======
     local PlayerTab = Window:CreateTab(getText("tab_player"), 4483362458)
     PlayerTab:CreateSection("👤 " .. (language == "RU" and "Параметры игрока" or "Player Settings"))
 
@@ -1330,7 +1334,6 @@ function loadMainMenu()
         end,
     })
 
-    -- ====== ВКЛАДКА: ЛОГИ ======
     local LogsTab = Window:CreateTab(getText("tab_logs"), 4483362458)
     LogsTab:CreateSection("📋 " .. (language == "RU" and "История обновлений" or "Update History"))
 
@@ -1342,7 +1345,6 @@ function loadMainMenu()
         })
     end
 
-    -- ====== ВКЛАДКА: СОЗДАТЕЛЬ ======
     local CreatorTab = Window:CreateTab(getText("tab_creator"), 4483362458)
     CreatorTab:CreateSection("👑 " .. (language == "RU" and "Доступ разработчика" or "Developer Access"))
 
@@ -1370,14 +1372,13 @@ function loadMainMenu()
         local globalUsers = getGlobalScriptUsers()
         CreatorTab:CreateLabel(getText("creator_global_users") .. tostring(globalUsers))
         
-        CreatorTab:CreateSection("📋 " .. (language == "RU" and "Игроки на сервере" or "Players on server"))
+        local globalPlayers = getGlobalPlayersList()
+        CreatorTab:CreateLabel(getText("creator_global_players") .. tostring(#globalPlayers))
         
-        for _, p in ipairs(Players:GetPlayers()) do
-            local status = getText("creator_no_script")
-            if p:FindFirstChild("ILOVEKOCMOC_Active") then
-                status = getText("creator_has_script")
-            end
-            CreatorTab:CreateLabel("👤 " .. p.Name .. " - " .. status)
+        CreatorTab:CreateSection(getText("creator_players_list"))
+        
+        for _, p in ipairs(globalPlayers) do
+            CreatorTab:CreateLabel("👤 " .. p.name .. " | v" .. p.version .. " | " .. os.date("%Y-%m-%d", p.lastSeen))
         end
         
         CreatorTab:CreateSection("⚡ " .. (language == "RU" and "Действия" or "Actions"))
@@ -1386,9 +1387,7 @@ function loadMainMenu()
             Name = getText("creator_kick_all"),
             Callback = function()
                 for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= Player then
-                        pcall(function() p:Kick("Кикнут разработчиком") end)
-                    end
+                    if p ~= Player then pcall(function() p:Kick("Кикнут разработчиком") end) end
                 end
                 Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_kick"), Duration = 6.5, Image = 4483362458})
             end,
@@ -1498,7 +1497,6 @@ function loadMainMenu()
         })
     end
 
-    -- ====== КНОПКА УНИЧТОЖЕНИЯ ======
     local SettingsTab = Window:CreateTab("⚙️ " .. (language == "RU" and "Настройки" or "Settings"), 4483362458)
     SettingsTab:CreateButton({
         Name = getText("btn_close"),
