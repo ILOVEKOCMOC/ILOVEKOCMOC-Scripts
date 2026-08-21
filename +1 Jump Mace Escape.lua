@@ -40,9 +40,7 @@ local function getGlobalPlayersList()
         local response = game:HttpGet(GistRawURL .. "players.json")
         if response and response ~= "404: Not Found" then
             local data = HttpService:JSONDecode(response)
-            if data.players then
-                players = data.players
-            end
+            if data.players then players = data.players end
         end
     end)
     return players
@@ -155,24 +153,24 @@ local texts = {
         creator_key_label = "Введите ключ разработчика:",
         creator_key_error = "❌ НЕВЕРНЫЙ КЛЮЧ РАЗРАБОТЧИКА!",
         creator_key_success = "✅ ДОСТУП РАЗРЕШЁН!",
-        creator_global_users = "🌍 Всего запусков скрипта: ",
-        creator_global_players = "🌍 Всего игроков со скриптом: ",
-        creator_players_list = "📋 Глобальный список игроков:",
-        creator_kick_all = "👢 Кикнуть всех на сервере",
-        creator_tp_all = "📍 Телепорт всех к себе",
+        creator_global_users = "🌍 Всего запусков: ",
+        creator_global_players = "🌍 Игроков со скриптом: ",
+        creator_players_list = "📋 Глобальный список:",
+        creator_kick_all = "👢 Кикнуть всех",
+        creator_tp_all = "📍 Телепорт всех",
         creator_freeze_all = "🧊 Заморозить всех",
         creator_unfreeze_all = "🔥 Разморозить всех",
         creator_kill_all = "💀 Убить всех",
         creator_heal_all = "❤️ Вылечить всех",
         creator_fling_all = "🌀 Зафлигать всех",
         creator_unfling_all = "🛑 Стоп флинг",
-        creator_success_kick = "✅ Все игроки кикнуты!",
-        creator_success_tp = "✅ Все игроки телепортированы к вам!",
-        creator_success_freeze = "✅ Все игроки заморожены!",
-        creator_success_unfreeze = "✅ Все игроки разморожены!",
-        creator_success_kill = "✅ Все игроки убиты!",
-        creator_success_heal = "✅ Все игроки вылечены!",
-        creator_success_fling = "✅ Все игроки зафлинганы!",
+        creator_success_kick = "✅ Все кикнуты!",
+        creator_success_tp = "✅ Все телепортированы!",
+        creator_success_freeze = "✅ Все заморожены!",
+        creator_success_unfreeze = "✅ Все разморожены!",
+        creator_success_kill = "✅ Все убиты!",
+        creator_success_heal = "✅ Все вылечены!",
+        creator_success_fling = "✅ Флинг включен!",
         creator_success_unfling = "✅ Флинг остановлен!"
     },
     EN = {
@@ -258,24 +256,24 @@ local texts = {
         creator_key_label = "Enter creator key:",
         creator_key_error = "❌ WRONG CREATOR KEY!",
         creator_key_success = "✅ ACCESS GRANTED!",
-        creator_global_users = "🌍 Total script launches: ",
-        creator_global_players = "🌍 Total players with script: ",
-        creator_players_list = "📋 Global player list:",
-        creator_kick_all = "👢 Kick all on server",
-        creator_tp_all = "📍 Teleport all to me",
+        creator_global_users = "🌍 Total launches: ",
+        creator_global_players = "🌍 Players with script: ",
+        creator_players_list = "📋 Global list:",
+        creator_kick_all = "👢 Kick all",
+        creator_tp_all = "📍 Teleport all",
         creator_freeze_all = "🧊 Freeze all",
         creator_unfreeze_all = "🔥 Unfreeze all",
         creator_kill_all = "💀 Kill all",
         creator_heal_all = "❤️ Heal all",
         creator_fling_all = "🌀 Fling all",
         creator_unfling_all = "🛑 Stop fling",
-        creator_success_kick = "✅ All players kicked!",
-        creator_success_tp = "✅ All players teleported to you!",
-        creator_success_freeze = "✅ All players frozen!",
-        creator_success_unfreeze = "✅ All players unfrozen!",
-        creator_success_kill = "✅ All players killed!",
-        creator_success_heal = "✅ All players healed!",
-        creator_success_fling = "✅ All players flung!",
+        creator_success_kick = "✅ All kicked!",
+        creator_success_tp = "✅ All teleported!",
+        creator_success_freeze = "✅ All frozen!",
+        creator_success_unfreeze = "✅ All unfrozen!",
+        creator_success_kill = "✅ All killed!",
+        creator_success_heal = "✅ All healed!",
+        creator_success_fling = "✅ Fling enabled!",
         creator_success_unfling = "✅ Fling stopped!"
     }
 }
@@ -1339,10 +1337,7 @@ function loadMainMenu()
 
     for _, log in ipairs(updateLogs) do
         LogsTab:CreateLabel("🔹 v" .. log.version)
-        LogsTab:CreateParagraph({
-            Title = "Изменения:",
-            Content = log.changes
-        })
+        LogsTab:CreateParagraph({Title = "Изменения:", Content = log.changes})
     end
 
     local CreatorTab = Window:CreateTab(getText("tab_creator"), 4483362458)
@@ -1367,19 +1362,33 @@ function loadMainMenu()
     function loadCreatorPanel()
         if not creatorAccessGranted then return end
         
-        CreatorTab:CreateSection("🌍 " .. (language == "RU" and "Статистика" or "Statistics"))
+        CreatorTab:CreateSection("🌍 " .. (language == "RU" and "Статистика (обновляется каждую секунду)" or "Statistics (updates every second)"))
         
-        local globalUsers = getGlobalScriptUsers()
-        CreatorTab:CreateLabel(getText("creator_global_users") .. tostring(globalUsers))
-        
-        local globalPlayers = getGlobalPlayersList()
-        CreatorTab:CreateLabel(getText("creator_global_players") .. tostring(#globalPlayers))
+        local globalUsersLabel = CreatorTab:CreateLabel(getText("creator_global_users") .. "0")
+        local globalPlayersLabel = CreatorTab:CreateLabel(getText("creator_global_players") .. "0")
         
         CreatorTab:CreateSection(getText("creator_players_list"))
         
-        for _, p in ipairs(globalPlayers) do
-            CreatorTab:CreateLabel("👤 " .. p.name .. " | v" .. p.version .. " | " .. os.date("%Y-%m-%d", p.lastSeen))
-        end
+        -- Авто-обновление каждую секунду
+        local syncLoop
+        syncLoop = RunService.Heartbeat:Connect(function()
+            if not creatorAccessGranted then
+                if syncLoop then syncLoop:Disconnect() end
+                return
+            end
+            
+            spawn(function()
+                pcall(function()
+                    local users = getGlobalScriptUsers()
+                    globalUsersLabel:Set(getText("creator_global_users") .. tostring(users))
+                    
+                    local players = getGlobalPlayersList()
+                    globalPlayersLabel:Set(getText("creator_global_players") .. tostring(#players))
+                end)
+            end)
+            
+            task.wait(1) -- Обновление каждую секунду
+        end)
         
         CreatorTab:CreateSection("⚡ " .. (language == "RU" and "Действия" or "Actions"))
         
