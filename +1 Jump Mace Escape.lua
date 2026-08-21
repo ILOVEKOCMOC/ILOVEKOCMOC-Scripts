@@ -18,39 +18,166 @@ local savedTransparency = nil
 local ScriptVersion = "1.1.1(Beta)"
 local KeyURL = "https://youtu.be/9Lv6lhK5n6E"
 
--- ====== GITHUB GIST СИНХРОНИЗАЦИЯ ======
-local GistID = "a0b0ce3e4cff2518b41653f8a9004762"
-local GistRawURL = "https://gist.githubusercontent.com/ILOVEKOCMOC/" .. GistID .. "/raw/"
-
-local function getGlobalScriptUsers()
-    local total = 0
-    pcall(function()
-        local response = game:HttpGet(GistRawURL .. "stats.json")
-        if response and response ~= "404: Not Found" then
-            local stats = HttpService:JSONDecode(response)
-            total = stats.count or 0
-        end
-    end)
-    return total
-end
-
-local function getGlobalPlayersList()
-    local players = {}
-    pcall(function()
-        local response = game:HttpGet(GistRawURL .. "players.json")
-        if response and response ~= "404: Not Found" then
-            local data = HttpService:JSONDecode(response)
-            if data.players then players = data.players end
-        end
-    end)
-    return players
-end
+-- ====== JSONBIN.IO СИНХРОНИЗАЦИЯ ======
+local BinID = "6a87f3d8da38895dfefe7981"
+local ApiKey = "$2a$10$dMTaIid803n2yFFFE1etEOyZUpar0U9lX2M31VdUm5ZvaFVgWFWPq"
+local BinURL = "https://api.jsonbin.io/v3/b/" .. BinID
 
 -- ====== СЕРВИСЫ ======
 local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- ====== СИНХРОНИЗАЦИЯ ЧЕРЕЗ REMOTE EVENT + JSONBIN ======
+local syncFolder = ReplicatedStorage:FindFirstChild("ILOVEKOCMOC_Sync")
+if not syncFolder then
+    syncFolder = Instance.new("Folder")
+    syncFolder.Name = "ILOVEKOCMOC_Sync"
+    syncFolder.Parent = ReplicatedStorage
+end
+
+local remoteEvent = syncFolder:FindFirstChild("Command")
+if not remoteEvent then
+    remoteEvent = Instance.new("RemoteEvent")
+    remoteEvent.Name = "Command"
+    remoteEvent.Parent = syncFolder
+end
+
+-- Чтение глобального счётчика
+local function getGlobalScriptUsers()
+    local total = 0
+    pcall(function()
+        local response = game:HttpGet(BinURL .. "/latest")
+        local data = HttpService:JSONDecode(response)
+        if data.record then
+            total = data.record.count or 0
+        end
+    end)
+    return total
+end
+
+-- Увеличение счётчика
+local function incrementScriptCounter()
+    pcall(function()
+        local request = syn.request or http_request or request
+        if request then
+            local current = getGlobalScriptUsers()
+            request({
+                Url = BinURL,
+                Method = "PUT",
+                Headers = {
+                    ["Content-Type"] = "application/json",
+                    ["X-Master-Key"] = ApiKey
+                },
+                Body = HttpService:JSONEncode({count = current + 1})
+            })
+        end
+    end)
+end
+
+-- Отправка глобальной команды
+local function sendGlobalCommand(command, data)
+    -- Отправляем через сервер (все на этом сервере)
+    pcall(function()
+        remoteEvent:FireServer(command, data)
+    end)
+    
+    -- Отправляем через JSONBin (все на других серверах)
+    pcall(function()
+        local request = syn.request or http_request or request
+        if request then
+            request({
+                Url = BinURL,
+                Method = "PUT",
+                Headers = {
+                    ["Content-Type"] = "application/json",
+                    ["X-Master-Key"] = ApiKey
+                },
+                Body = HttpService:JSONEncode({
+                    command = command,
+                    data = data,
+                    timestamp = os.time()
+                })
+            })
+        end
+    end)
+end
+
+-- Обработка команд
+local function handleCommand(command, data)
+    local Player = Players.LocalPlayer
+    
+    if command == "kick" then
+        pcall(function() Player:Kick("Кикнут разработчиком") end)
+    elseif command == "kill" then
+        if Player.Character then
+            local humanoid = Player.Character:FindFirstChild("Humanoid")
+            if humanoid then humanoid.Health = 0 end
+        end
+    elseif command == "freeze" then
+        if Player.Character then
+            local humanoid = Player.Character:FindFirstChild("Humanoid")
+            if humanoid then humanoid.WalkSpeed = 0 humanoid.JumpPower = 0 end
+        end
+    elseif command == "unfreeze" then
+        if Player.Character then
+            local humanoid = Player.Character:FindFirstChild("Humanoid")
+            if humanoid then humanoid.WalkSpeed = 16 humanoid.JumpPower = 50 end
+        end
+    elseif command == "heal" then
+        if Player.Character then
+            local humanoid = Player.Character:FindFirstChild("Humanoid")
+            if humanoid then humanoid.Health = humanoid.MaxHealth end
+        end
+    elseif command == "fling" then
+        spawn(function()
+            local flingActive = true
+            task.delay(5, function() flingActive = false end)
+            while flingActive do
+                if Player.Character then
+                    local hrp = Player.Character:FindFirstChild("HumanoidRootPart")
+                    if hrp then
+                        hrp.Velocity = Vector3.new(math.random(-50, 50), math.random(-50, 50), math.random(-50, 50))
+                        hrp.RotVelocity = Vector3.new(math.random(-10, 10), math.random(-10, 10), math.random(-10, 10))
+                    end
+                end
+                task.wait(0.1)
+            end
+        end)
+    elseif command == "tp" then
+        if data and Player.Character then
+            local hrp = Player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.CFrame = CFrame.new(data.x, data.y, data.z)
+            end
+        end
+    end
+end
+
+-- Слушаем команды с сервера
+remoteEvent.OnClientEvent:Connect(function(command, data)
+    handleCommand(command, data)
+end)
+
+-- Проверяем глобальные команды каждую секунду
+spawn(function()
+    local lastTimestamp = 0
+    while true do
+        pcall(function()
+            local response = game:HttpGet(BinURL .. "/latest")
+            local data = HttpService:JSONDecode(response)
+            if data.record and data.record.command and data.record.timestamp then
+                if data.record.timestamp > lastTimestamp then
+                    lastTimestamp = data.record.timestamp
+                    handleCommand(data.record.command, data.record.data)
+                end
+            end
+        end)
+        task.wait(1)
+    end
+end)
 
 -- ====== ЛОГИ АПДЕЙТОВ ======
 local updateLogs = {
@@ -60,7 +187,7 @@ local updateLogs = {
     },
     {
         version = "1.1.1(Beta)",
-        changes = "Добавлена панель разраба с глобальной синхронизацией через Gist и логами апдейта"
+        changes = "Добавлена глобальная синхронизация и панель разраба"
     },
     {
         version = "1.0.1(Beta)",
@@ -154,24 +281,13 @@ local texts = {
         creator_key_error = "❌ НЕВЕРНЫЙ КЛЮЧ РАЗРАБОТЧИКА!",
         creator_key_success = "✅ ДОСТУП РАЗРЕШЁН!",
         creator_global_users = "🌍 Всего запусков: ",
-        creator_global_players = "🌍 Игроков со скриптом: ",
-        creator_players_list = "📋 Глобальный список:",
-        creator_kick_all = "👢 Кикнуть всех",
-        creator_tp_all = "📍 Телепорт всех",
-        creator_freeze_all = "🧊 Заморозить всех",
-        creator_unfreeze_all = "🔥 Разморозить всех",
-        creator_kill_all = "💀 Убить всех",
-        creator_heal_all = "❤️ Вылечить всех",
-        creator_fling_all = "🌀 Зафлигать всех",
-        creator_unfling_all = "🛑 Стоп флинг",
-        creator_success_kick = "✅ Все кикнуты!",
-        creator_success_tp = "✅ Все телепортированы!",
-        creator_success_freeze = "✅ Все заморожены!",
-        creator_success_unfreeze = "✅ Все разморожены!",
-        creator_success_kill = "✅ Все убиты!",
-        creator_success_heal = "✅ Все вылечены!",
-        creator_success_fling = "✅ Флинг включен!",
-        creator_success_unfling = "✅ Флинг остановлен!"
+        creator_kick_global = "👢 Кикнуть всех ГЛОБАЛЬНО",
+        creator_kill_global = "💀 Убить всех ГЛОБАЛЬНО",
+        creator_freeze_global = "🧊 Заморозить всех ГЛОБАЛЬНО",
+        creator_unfreeze_global = "🔥 Разморозить всех ГЛОБАЛЬНО",
+        creator_heal_global = "❤️ Вылечить всех ГЛОБАЛЬНО",
+        creator_fling_global = "🌀 Зафлигать всех ГЛОБАЛЬНО",
+        creator_success_global = "✅ Команда отправлена всем игрокам со скриптом!"
     },
     EN = {
         key_title = "🔐 ENTER KEY",
@@ -257,24 +373,13 @@ local texts = {
         creator_key_error = "❌ WRONG CREATOR KEY!",
         creator_key_success = "✅ ACCESS GRANTED!",
         creator_global_users = "🌍 Total launches: ",
-        creator_global_players = "🌍 Players with script: ",
-        creator_players_list = "📋 Global list:",
-        creator_kick_all = "👢 Kick all",
-        creator_tp_all = "📍 Teleport all",
-        creator_freeze_all = "🧊 Freeze all",
-        creator_unfreeze_all = "🔥 Unfreeze all",
-        creator_kill_all = "💀 Kill all",
-        creator_heal_all = "❤️ Heal all",
-        creator_fling_all = "🌀 Fling all",
-        creator_unfling_all = "🛑 Stop fling",
-        creator_success_kick = "✅ All kicked!",
-        creator_success_tp = "✅ All teleported!",
-        creator_success_freeze = "✅ All frozen!",
-        creator_success_unfreeze = "✅ All unfrozen!",
-        creator_success_kill = "✅ All killed!",
-        creator_success_heal = "✅ All healed!",
-        creator_success_fling = "✅ Fling enabled!",
-        creator_success_unfling = "✅ Fling stopped!"
+        creator_kick_global = "👢 Kick all GLOBAL",
+        creator_kill_global = "💀 Kill all GLOBAL",
+        creator_freeze_global = "🧊 Freeze all GLOBAL",
+        creator_unfreeze_global = "🔥 Unfreeze all GLOBAL",
+        creator_heal_global = "❤️ Heal all GLOBAL",
+        creator_fling_global = "🌀 Fling all GLOBAL",
+        creator_success_global = "✅ Command sent to all script users!"
     }
 }
 
@@ -711,6 +816,7 @@ local function createKeySystem()
         if KeyInput.Text == correctKey then
             ErrorLabel.Text = getText("key_success")
             ErrorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+            incrementScriptCounter() -- Увеличиваем счётчик
             task.wait(0.5)
             animateKeySystemOut(MainFrame, ScreenGui, function()
                 ScreenGui:Destroy()
@@ -728,6 +834,7 @@ local function createKeySystem()
             if KeyInput.Text == correctKey then
                 ErrorLabel.Text = getText("key_success")
                 ErrorLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                incrementScriptCounter()
                 task.wait(0.5)
                 animateKeySystemOut(MainFrame, ScreenGui, function()
                     ScreenGui:Destroy()
@@ -1362,146 +1469,72 @@ function loadMainMenu()
     function loadCreatorPanel()
         if not creatorAccessGranted then return end
         
-        CreatorTab:CreateSection("🌍 " .. (language == "RU" and "Статистика (обновляется каждую секунду)" or "Statistics (updates every second)"))
+        CreatorTab:CreateSection("🌍 " .. (language == "RU" and "Статистика" or "Statistics"))
         
         local globalUsersLabel = CreatorTab:CreateLabel(getText("creator_global_users") .. "0")
-        local globalPlayersLabel = CreatorTab:CreateLabel(getText("creator_global_players") .. "0")
         
-        CreatorTab:CreateSection(getText("creator_players_list"))
-        
-        -- Авто-обновление каждую секунду
         local syncLoop
         syncLoop = RunService.Heartbeat:Connect(function()
             if not creatorAccessGranted then
                 if syncLoop then syncLoop:Disconnect() end
                 return
             end
-            
             spawn(function()
                 pcall(function()
                     local users = getGlobalScriptUsers()
                     globalUsersLabel:Set(getText("creator_global_users") .. tostring(users))
-                    
-                    local players = getGlobalPlayersList()
-                    globalPlayersLabel:Set(getText("creator_global_players") .. tostring(#players))
                 end)
             end)
-            
-            task.wait(1) -- Обновление каждую секунду
+            task.wait(1)
         end)
         
-        CreatorTab:CreateSection("⚡ " .. (language == "RU" and "Действия" or "Actions"))
+        CreatorTab:CreateSection("⚡ " .. (language == "RU" and "Глобальные действия" or "Global Actions"))
         
         CreatorTab:CreateButton({
-            Name = getText("creator_kick_all"),
+            Name = getText("creator_kick_global"),
             Callback = function()
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= Player then pcall(function() p:Kick("Кикнут разработчиком") end) end
-                end
-                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_kick"), Duration = 6.5, Image = 4483362458})
+                sendGlobalCommand("kick", nil)
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_global"), Duration = 6.5, Image = 4483362458})
             end,
         })
         
         CreatorTab:CreateButton({
-            Name = getText("creator_tp_all"),
+            Name = getText("creator_kill_global"),
             Callback = function()
-                local myChar = Player.Character
-                if myChar then
-                    local myHRP = myChar:FindFirstChild("HumanoidRootPart")
-                    if myHRP then
-                        for _, p in ipairs(Players:GetPlayers()) do
-                            if p ~= Player and p.Character then
-                                local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-                                if hrp then hrp.CFrame = myHRP.CFrame + Vector3.new(0, 2, 0) end
-                            end
-                        end
-                    end
-                end
-                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_tp"), Duration = 6.5, Image = 4483362458})
+                sendGlobalCommand("kill", nil)
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_global"), Duration = 6.5, Image = 4483362458})
             end,
         })
         
         CreatorTab:CreateButton({
-            Name = getText("creator_freeze_all"),
+            Name = getText("creator_freeze_global"),
             Callback = function()
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= Player and p.Character then
-                        local humanoid = p.Character:FindFirstChild("Humanoid")
-                        if humanoid then humanoid.WalkSpeed = 0 humanoid.JumpPower = 0 end
-                    end
-                end
-                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_freeze"), Duration = 6.5, Image = 4483362458})
+                sendGlobalCommand("freeze", nil)
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_global"), Duration = 6.5, Image = 4483362458})
             end,
         })
         
         CreatorTab:CreateButton({
-            Name = getText("creator_unfreeze_all"),
+            Name = getText("creator_unfreeze_global"),
             Callback = function()
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= Player and p.Character then
-                        local humanoid = p.Character:FindFirstChild("Humanoid")
-                        if humanoid then humanoid.WalkSpeed = 16 humanoid.JumpPower = 50 end
-                    end
-                end
-                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_unfreeze"), Duration = 6.5, Image = 4483362458})
+                sendGlobalCommand("unfreeze", nil)
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_global"), Duration = 6.5, Image = 4483362458})
             end,
         })
         
         CreatorTab:CreateButton({
-            Name = getText("creator_kill_all"),
+            Name = getText("creator_heal_global"),
             Callback = function()
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= Player and p.Character then
-                        local humanoid = p.Character:FindFirstChild("Humanoid")
-                        if humanoid then humanoid.Health = 0 end
-                    end
-                end
-                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_kill"), Duration = 6.5, Image = 4483362458})
+                sendGlobalCommand("heal", nil)
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_global"), Duration = 6.5, Image = 4483362458})
             end,
         })
         
         CreatorTab:CreateButton({
-            Name = getText("creator_heal_all"),
+            Name = getText("creator_fling_global"),
             Callback = function()
-                for _, p in ipairs(Players:GetPlayers()) do
-                    if p ~= Player and p.Character then
-                        local humanoid = p.Character:FindFirstChild("Humanoid")
-                        if humanoid then humanoid.Health = humanoid.MaxHealth end
-                    end
-                end
-                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_heal"), Duration = 6.5, Image = 4483362458})
-            end,
-        })
-        
-        local flingActive = false
-        local flingLoop = nil
-        
-        CreatorTab:CreateButton({
-            Name = getText("creator_fling_all"),
-            Callback = function()
-                flingActive = true
-                flingLoop = RunService.Heartbeat:Connect(function()
-                    if not flingActive then if flingLoop then flingLoop:Disconnect() flingLoop = nil end return end
-                    for _, p in ipairs(Players:GetPlayers()) do
-                        if p ~= Player and p.Character then
-                            local hrp = p.Character:FindFirstChild("HumanoidRootPart")
-                            if hrp then
-                                hrp.Velocity = Vector3.new(math.random(-50, 50), math.random(-50, 50), math.random(-50, 50))
-                                hrp.RotVelocity = Vector3.new(math.random(-10, 10), math.random(-10, 10), math.random(-10, 10))
-                            end
-                        end
-                    end
-                end)
-                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_fling"), Duration = 6.5, Image = 4483362458})
-            end,
-        })
-        
-        CreatorTab:CreateButton({
-            Name = getText("creator_unfling_all"),
-            Callback = function()
-                flingActive = false
-                if flingLoop then flingLoop:Disconnect() flingLoop = nil end
-                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_unfling"), Duration = 6.5, Image = 4483362458})
+                sendGlobalCommand("fling", nil)
+                Rayfield:Notify({Title = getText("creator_title"), Content = getText("creator_success_global"), Duration = 6.5, Image = 4483362458})
             end,
         })
     end
